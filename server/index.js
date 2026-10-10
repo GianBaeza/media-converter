@@ -10,6 +10,10 @@ app.use(express.json());
 
 const YOUTUBE_URL_RE = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i;
 
+// yt-dlp needs a JS runtime to decode YouTube's signature cipher; the
+// container ships Node.js already, so reuse it instead of adding deno.
+const JS_RUNTIME_ARGS = ['--js-runtimes', 'node'];
+
 function isValidYoutubeUrl(url) {
   return typeof url === 'string' && YOUTUBE_URL_RE.test(url);
 }
@@ -37,7 +41,7 @@ app.post('/api/formats', async (req, res) => {
   }
 
   try {
-    const output = await runYtDlp(['-j', '--no-playlist', url]);
+    const output = await runYtDlp([...JS_RUNTIME_ARGS, '-j', '--no-playlist', url]);
     const info = JSON.parse(output);
 
     const heightSeen = new Set();
@@ -89,6 +93,7 @@ app.get('/api/download', (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="video-${maxHeight}p.mp4"`);
 
   const proc = spawn('yt-dlp', [
+    ...JS_RUNTIME_ARGS,
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
     '--no-playlist',

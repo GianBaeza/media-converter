@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import './App.css'
 
+// On Vercel the frontend and backend are separate deployments, so the
+// backend URL must be absolute. Locally, Vite's dev proxy handles the
+// relative "/api" path (see vite.config.js), so this stays empty.
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 function App() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,7 +24,7 @@ function App() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/formats', {
+      const res = await fetch(`${API_URL}/api/formats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim() }),
@@ -41,7 +46,7 @@ function App() {
     setDownloading(true)
     const params = new URLSearchParams({ url: url.trim(), height: selectedHeight })
     const link = document.createElement('a')
-    link.href = `/api/download?${params.toString()}`
+    link.href = `${API_URL}/api/download?${params.toString()}`
     link.click()
     setTimeout(() => setDownloading(false), 2000)
   }
