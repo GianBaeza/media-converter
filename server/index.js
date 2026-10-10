@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +14,17 @@ const YOUTUBE_URL_RE = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i;
 // yt-dlp needs a JS runtime to decode YouTube's signature cipher; the
 // container ships Node.js already, so reuse it instead of adding deno.
 const JS_RUNTIME_ARGS = ['--js-runtimes', 'node'];
+
+// Cloud IPs (Railway, etc.) get rate-limited/blocked by YouTube ("Sign in
+// to confirm you're not a bot"). Passing cookies from a real logged-in
+// session works around it. Set YTDLP_COOKIES in the environment to the
+// contents of a cookies.txt exported from a browser.
+const COOKIES_PATH = '/tmp/cookies.txt';
+const COOKIE_ARGS = [];
+if (process.env.YTDLP_COOKIES) {
+  writeFileSync(COOKIES_PATH, process.env.YTDLP_COOKIES);
+  COOKIE_ARGS.push('--cookies', COOKIES_PATH);
+}
 
 function isValidYoutubeUrl(url) {
   return typeof url === 'string' && YOUTUBE_URL_RE.test(url);
@@ -41,7 +53,7 @@ app.post('/api/formats', async (req, res) => {
   }
 
   try {
-    const output = await runYtDlp([...JS_RUNTIME_ARGS, '-j', '--no-playlist', url]);
+    const output = await runYtDlp([...JS_RUNTIME_ARGS, ...COOKIE_ARGS, '-j', '--no-playlist', url]);
     const info = JSON.parse(output);
 
     const heightSeen = new Set();
@@ -96,6 +108,7 @@ app.get('/api/download', (req, res) => {
 
   const proc = spawn('yt-dlp', [
     ...JS_RUNTIME_ARGS,
+    ...COOKIE_ARGS,
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
     '--no-playlist',
