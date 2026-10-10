@@ -79,12 +79,14 @@ app.get('/api/download', (req, res) => {
   }
 
   const maxHeight = Math.min(parseInt(height, 10) || 1080, 1080);
-  // Streaming to stdout forces an mpegts container, which only carries
-  // H.264/AAC reliably — VP9/Opus (common in webm formats) gets silently
-  // dropped. Prefer mp4-native streams so the remux actually keeps video+audio.
+  // Streaming to stdout forces an mpegts container (ffmpeg can't seek back
+  // to write a real MP4 moov atom over a pipe). mpegts only muxes H.264/AAC
+  // reliably — VP9/Opus/AV1 get muxed as unreadable "private data" streams,
+  // even when YouTube ships them inside an ext=mp4 itag (e.g. AV1-in-mp4).
+  // So filter on the actual codec, not the container extension.
   const formatSelector = [
-    `bestvideo[height<=${maxHeight}][ext=mp4]+bestaudio[ext=m4a]`,
-    `best[height<=${maxHeight}][ext=mp4]`,
+    `bestvideo[height<=${maxHeight}][vcodec^=avc1]+bestaudio[ext=m4a]`,
+    `best[height<=${maxHeight}][vcodec^=avc1]`,
     `bestvideo[height<=${maxHeight}]+bestaudio`,
     `best[height<=${maxHeight}]`,
   ].join('/');
@@ -96,11 +98,6 @@ app.get('/api/download', (req, res) => {
     ...JS_RUNTIME_ARGS,
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
-    // Streaming the merge to stdout means ffmpeg can't seek back to write
-    // a standard MP4 "moov" atom, producing files some players (notably
-    // Windows' native player) reject as corrupt. Fragmented MP4 writes
-    // its index incrementally instead, so it stays valid over a pipe.
-    '--postprocessor-args', 'Merger:-movflags frag_keyframe+empty_moov',
     '--no-playlist',
     '-o', '-',
     url,
