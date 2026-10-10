@@ -3,7 +3,7 @@ import './App.css'
 
 // On Vercel the frontend and backend are separate deployments, so the
 // backend URL must be absolute.
-const API_URL = import.meta.env.VITE_API_URL || 'https://media-converter-production-19c7.up.railway.app'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function App() {
   const [url, setUrl] = useState('')
