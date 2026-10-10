@@ -2,9 +2,8 @@ import { useState } from 'react'
 import './App.css'
 
 // On Vercel the frontend and backend are separate deployments, so the
-// backend URL must be absolute. Locally, Vite's dev proxy handles the
-// relative "/api" path (see vite.config.js), so this stays empty.
-const API_URL = import.meta.env.VITE_API_URL || ''
+// backend URL must be absolute.
+const API_URL = 'https://media-converter-production-19c7.up.railway.app'
 
 function App() {
   const [url, setUrl] = useState('')
