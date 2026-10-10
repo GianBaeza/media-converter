@@ -96,6 +96,11 @@ app.get('/api/download', (req, res) => {
     ...JS_RUNTIME_ARGS,
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
+    // Streaming the merge to stdout means ffmpeg can't seek back to write
+    // a standard MP4 "moov" atom, producing files some players (notably
+    // Windows' native player) reject as corrupt. Fragmented MP4 writes
+    // its index incrementally instead, so it stays valid over a pipe.
+    '--postprocessor-args', 'Merger:-movflags frag_keyframe+empty_moov',
     '--no-playlist',
     '-o', '-',
     url,
